@@ -446,9 +446,11 @@ class Dataset:
             cell_barcode_inds = \
                 self.analyzed_barcode_inds[filtered_inds_of_analyzed_barcodes]
 
+            cell_barcodes = self.data['barcodes'][cell_barcode_inds]
+
             write_matrix_to_h5(output_file=filtered_output_file,
                                gene_names=self.data['gene_names'],
-                               barcodes=self.data['barcodes'][cell_barcode_inds],
+                               barcodes=cell_barcodes,
                                inferred_count_matrix=
                                inferred_count_matrix[cell_barcode_inds, :],
                                cell_barcode_inds=None,
@@ -460,7 +462,11 @@ class Dataset:
                                p=p[filtered_inds_of_analyzed_barcodes],
                                loss=inferred_model.loss)
 
-        # TODO: also save cell_barcodes.csv
+            # Save barcodes determined to contain cells as _cell_barcodes.csv
+            barcode_names = np.array([str(cell_barcodes[i], encoding='UTF-8')
+                                     for i in range(len(cell_barcodes))])
+            np.savetxt(os.path.join(file_dir, file_name + "_cell_barcodes.csv"),
+                       barcode_names, delimiter=',', fmt='%s')
 
         try:
             # Save plots, if called for.
