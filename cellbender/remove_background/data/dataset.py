@@ -463,10 +463,14 @@ class Dataset:
                                loss=inferred_model.loss)
 
             # Save barcodes determined to contain cells as _cell_barcodes.csv
-            barcode_names = np.array([str(cell_barcodes[i], encoding='UTF-8')
-                                     for i in range(len(cell_barcodes))])
-            np.savetxt(os.path.join(file_dir, file_name + "_cell_barcodes.csv"),
-                       barcode_names, delimiter=',', fmt='%s')
+            try:
+                barcode_names = np.array([str(cell_barcodes[i], encoding='UTF-8')
+                                         for i in range(cell_barcodes.size)])
+            except UnicodeDecodeError:
+                barcode_names = cell_barcodes  # necessary if barcodes are ints
+            bc_file_name = os.path.join(file_dir, file_name + "_cell_barcodes.csv")
+            np.savetxt(bc_file_name, barcode_names, delimiter=',', fmt='%s')
+            logging.info(f"Saved cell barcodes in {bc_file_name}")
 
         try:
             # Save plots, if called for.

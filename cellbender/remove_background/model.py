@@ -121,7 +121,7 @@ class VariationalInferenceModel(nn.Module):
             assert chi_ambient_sum == 1., f"Issue with prior: chi_ambient should " \
                                           f"sum to 1, but is {chi_ambient_sum}"
             chi_bar_sum = np.round(dataset_obj.priors['chi_bar'].sum().item(),
-                                       decimals=4)
+                                   decimals=4)
             assert chi_bar_sum == 1., f"Issue with prior: chi_bar should " \
                                       f"sum to 1, but is {chi_bar_sum}"
 
@@ -159,11 +159,11 @@ class VariationalInferenceModel(nn.Module):
     def _calculate_mu(self,
                       chi: torch.Tensor,
                       d_cell: torch.Tensor,
-                      chi_ambient: Union[torch.Tensor, None] = None,
-                      d_empty: Union[torch.Tensor, None] = None,
-                      y: Union[torch.Tensor, None] = None,
-                      rho: Union[torch.Tensor, None] = None,
-                      chi_bar: Union[torch.Tensor, None] = None):
+                      chi_ambient: torch.Tensor,
+                      d_empty: torch.Tensor,
+                      y: torch.Tensor,
+                      rho: torch.Tensor,
+                      chi_bar: torch.Tensor):
         """Implement a calculation of mean expression based on the model."""
 
         if self.model_type == "simple":
@@ -247,7 +247,7 @@ class VariationalInferenceModel(nn.Module):
 
         return mu
 
-    def model(self, x, observe=True):
+    def model(self, x, observe=True) -> torch.Tensor:
         """Data likelihood model."""
 
         # Register the decoder with pyro.
@@ -260,6 +260,7 @@ class VariationalInferenceModel(nn.Module):
                                      torch.ones(torch.Size([])).to(self.device),
                                      constraint=constraints.simplex)
         else:
+            # chi_ambient = torch.rand(1)  # dummy tensor for Jit static typing
             chi_ambient = None
 
         # Sample phi from Gamma prior.
@@ -299,6 +300,7 @@ class VariationalInferenceModel(nn.Module):
                                                    self.rho_beta_prior)
                                   .expand_by([x.size(0)]))
             else:
+                # rho = torch.rand(1)  # dummy tensor for Jit static typing
                 rho = None
 
             # If modelling empty droplets:
@@ -314,8 +316,11 @@ class VariationalInferenceModel(nn.Module):
                 y = pyro.sample("y",
                                 dist.Bernoulli(logits=self.p_logit_prior)
                                 .expand_by([x.size(0)]))
+
             else:
+                d_empty = torch.rand(1)  # dummy tensor for Jit static typing
                 d_empty = None
+                # y = torch.rand(1)  # dummy tensor for Jit static typing
                 y = None
 
             # Calculate the mean gene expression counts (for each barcode).
@@ -336,14 +341,15 @@ class VariationalInferenceModel(nn.Module):
                 #             obs=x.reshape(-1, self.n_genes))
 
                 # Negative binomial:
-                pyro.sample("obs", NegativeBinomial(total_count=r,
-                                                    logits=logit).to_event(1),
-                            obs=x.reshape(-1, self.n_genes))
+                c = pyro.sample("obs", NegativeBinomial(total_count=r,
+                                                        logits=logit).to_event(1),
+                                obs=x.reshape(-1, self.n_genes))
             else:
                 # For data generation only
                 c = pyro.sample("obs", NegativeBinomial(total_count=r,
                                                         logits=logit).to_event(1))
-                return c
+
+        return c
 
     @config_enumerate(default='parallel')
     def guide(self, x, observe=True):
@@ -432,7 +438,8 @@ class VariationalInferenceModel(nn.Module):
                                            d_empty_scale).expand_by([x.size(0)]))
 
                 # Mask out the barcodes which are likely to be empty droplets.
-                masking = (enc['p_y'] >= 0).to(self.device, dtype=torch.float32)
+                # masking = (enc['p_y'] >= 0).to(self.device, dtype=torch.float32)
+                masking = dist.Bernoulli(logits=enc['p_y']).sample()  # for Jit
 
                 # Sample latent code z for the barcodes containing real cells.
                 pyro.sample("z",
