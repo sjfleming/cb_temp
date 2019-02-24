@@ -66,7 +66,7 @@ def evaluate_epoch(svi: pyro.infer.SVI,
 
     # Initialize loss accumulator and training set size.
     test_loss = 0.
-    normalizer_test = 0.
+    normalizer_test = 1e-10  # no division by zero in the case of no test data
 
     # Compute the loss over the entire tests set.
     for x_cell_batch in test_loader:
