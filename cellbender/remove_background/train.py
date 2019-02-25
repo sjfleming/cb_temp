@@ -226,7 +226,7 @@ def run_inference(dataset_obj: Dataset,
                                use_cuda=args.use_cuda)
 
     # Run the guide once for Jit.
-    model.guide(test_loader.__iter__().__next__())
+    # model.guide(test_loader.__iter__().__next__())
 
     # Set up the optimizer.
     adam_args = {"lr": args.learning_rate}
