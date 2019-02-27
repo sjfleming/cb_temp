@@ -124,7 +124,7 @@ def run_training(model: VariationalInferenceModel,
                          % (epoch, total_epoch_loss_train))
 
             # Every test_freq epochs, evaluate tests loss.
-            if epoch % test_freq == 0:
+            if len(test_loader) > 0 and epoch % test_freq == 0:
                 total_epoch_loss_test = evaluate_epoch(svi, test_loader)
                 test_elbo.append(-total_epoch_loss_test)
                 model.loss['test']['epoch'].append(epoch)
@@ -225,8 +225,8 @@ def run_inference(dataset_obj: Dataset,
                                shuffle=True,
                                use_cuda=args.use_cuda)
 
-    # Run the guide once for Jit.
-    # model.guide(test_loader.__iter__().__next__())
+    # Run the guide once for Jit. (can hang on StopIteration if no test data!)
+    # model.guide(test_loader.__iter__().__next__())  # This seems unnecessary
 
     # Set up the optimizer.
     adam_args = {"lr": args.learning_rate}
