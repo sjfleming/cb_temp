@@ -376,7 +376,7 @@ class VariationalInferenceModel(nn.Module):
 
         # If necessary, register the IAF with pyro.
         for i, iaf in enumerate(self.iafs):
-            pyro.module("iaf_" + i, iaf)
+            pyro.module(f"iaf_{i}", iaf)
 
         # Initialize variational parameters for d_cell.
         d_cell_scale = pyro.param("d_cell_scale",
