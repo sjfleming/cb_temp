@@ -100,6 +100,9 @@ class VariationalInferenceModel(nn.Module):
                     value.cuda()
             except KeyError:
                 pass
+            if len(self.iafs) > 0:
+                for iaf in self.iafs:
+                    iaf.cuda()
             self.device = 'cuda'
         else:
             self.device = 'cpu'
