@@ -80,6 +80,16 @@ class VariationalInferenceModel(nn.Module):
         self.loss = {'train': {'epoch': [], 'elbo': []},
                      'test': {'epoch': [], 'elbo': []}}
 
+        # Inverse autoregressive flow
+        num_iafs = 2
+        iaf_dim = self.z_dim * 2
+        iafs = [dist.iaf.InverseAutoregressiveFlowStable(
+            pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
+            for _ in range(num_iafs)]
+        self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
+        if len(self.iafs) > 0:
+            logging.info("Using inverse autoregressive flows for inference.")
+
         # Determine whether we are working on a GPU.
         if use_cuda:
             # Calling cuda() here will put all the parameters of
@@ -157,16 +167,6 @@ class VariationalInferenceModel(nn.Module):
                                 * torch.ones(torch.Size([])).to(self.device))
         self.rho_beta_prior = (rho_beta_prior
                                * torch.ones(torch.Size([])).to(self.device))
-
-        # Inverse autoregressive flow
-        num_iafs = 2
-        iaf_dim = self.z_dim * 2
-        iafs = [dist.iaf.InverseAutoregressiveFlowStable(
-                pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
-                for _ in range(num_iafs)]
-        self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
-        if len(self.iafs) > 0:
-            logging.info("Using inverse autoregressive flows for inference.")
 
     def _calculate_mu(self,
                       chi: torch.Tensor,
