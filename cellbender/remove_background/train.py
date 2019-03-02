@@ -209,6 +209,7 @@ def run_inference(dataset_obj: Dataset,
                                       dataset_obj=dataset_obj,
                                       use_decaying_avg_baseline=
                                       args.use_decaying_average_baseline,
+                                      use_IAF=args.use_IAF,
                                       use_cuda=args.use_cuda)
 
     # Load the dataset into DataLoaders.

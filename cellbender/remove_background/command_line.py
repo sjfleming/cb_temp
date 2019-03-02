@@ -123,6 +123,13 @@ class CLI(AbstractCLI):
                                help="Including the flag "
                                     "--decaying_average_baseline will use a "
                                     "decaying average baseline during inference.")
+        subparser.add_argument("--use_IAF",
+                               dest="use_IAF",
+                               action="store_true",
+                               help="Including the flag "
+                                    "--use_IAF will use an inverse autoregressive "
+                                    "flow during inference to allow more "
+                                    "flexibility in the learned posterior.")
         subparser.add_argument("--low_count_threshold", type=int, default=30,
                                dest="low_count_threshold",
                                help="Droplets with UMI counts below this are"

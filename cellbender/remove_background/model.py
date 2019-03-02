@@ -7,6 +7,7 @@ import torch.nn as nn
 from torch.distributions import constraints
 import pyro
 import pyro.distributions as dist
+import pyro.nn
 from pyro.infer import config_enumerate
 from cellbender.remove_background.distributions.NegativeBinomial \
     import NegativeBinomial
@@ -57,7 +58,8 @@ class VariationalInferenceModel(nn.Module):
                  phi_scale_prior: float = 0.2,
                  rho_alpha_prior: float = 3,
                  rho_beta_prior: float = 80,
-                 use_decaying_avg_baseline: bool = True,
+                 use_decaying_avg_baseline: bool = False,
+                 use_IAF: bool = True,
                  lambda_reg: float = 0.,
                  use_cuda: bool = False):
         super(VariationalInferenceModel, self).__init__()
@@ -155,6 +157,16 @@ class VariationalInferenceModel(nn.Module):
                                 * torch.ones(torch.Size([])).to(self.device))
         self.rho_beta_prior = (rho_beta_prior
                                * torch.ones(torch.Size([])).to(self.device))
+
+        # Inverse autoregressive flow
+        num_iafs = 2
+        iaf_dim = self.z_dim * 2
+        iafs = [dist.iaf.InverseAutoregressiveFlowStable(
+                pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
+                for _ in range(num_iafs)]
+        self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
+        if len(self.iafs) > 0:
+            logging.info("Using inverse autoregressive flows for inference.")
 
     def _calculate_mu(self,
                       chi: torch.Tensor,
@@ -441,10 +453,15 @@ class VariationalInferenceModel(nn.Module):
                 # masking = (enc['p_y'] >= 0).to(self.device, dtype=torch.float32)
                 masking = dist.Bernoulli(logits=enc['p_y']).sample()  # for Jit
 
+                # Determine the posterior distribution for z...
+                z_dist = dist.Normal(enc['z']['loc'], enc['z']['scale'])
+
+                # ... adding an inverse autoregressive flow if called for.
+                if len(self.iafs) > 0:
+                    z_dist = dist.TransformedDistribution(z_dist, self.iafs)
+
                 # Sample latent code z for the barcodes containing real cells.
-                pyro.sample("z",
-                            dist.Normal(enc['z']['loc'],
-                                        enc['z']['scale']).to_event(1).mask(masking))
+                pyro.sample("z", z_dist.to_event(1).mask(masking))
 
                 # Sample the Bernoulli y from encoded p(y).
                 pyro.sample("y", dist.Bernoulli(logits=enc['p_y']),
