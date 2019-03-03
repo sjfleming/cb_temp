@@ -59,7 +59,7 @@ class VariationalInferenceModel(nn.Module):
                  rho_alpha_prior: float = 3,
                  rho_beta_prior: float = 80,
                  use_decaying_avg_baseline: bool = False,
-                 use_IAF: bool = True,
+                 use_IAF: bool = False,
                  lambda_reg: float = 0.,
                  use_cuda: bool = False):
         super(VariationalInferenceModel, self).__init__()
@@ -73,6 +73,7 @@ class VariationalInferenceModel(nn.Module):
             self.include_rho = True
 
         self.use_decaying_avg_baseline = use_decaying_avg_baseline
+        self.use_IAF = use_IAF
         self.n_genes = dataset_obj.analyzed_gene_inds.size
         self.z_dim = decoder.input_dim
         self.encoder = encoder
