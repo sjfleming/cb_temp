@@ -81,14 +81,17 @@ class VariationalInferenceModel(nn.Module):
                      'test': {'epoch': [], 'elbo': []}}
 
         # Inverse autoregressive flow
-        num_iafs = 1
-        iaf_dim = self.z_dim
-        iafs = [dist.iaf.InverseAutoregressiveFlow(
-            pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
-            for _ in range(num_iafs)]
-        self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
-        if len(self.iafs) > 0:
-            logging.info("Using inverse autoregressive flows for inference.")
+        if self.use_IAF:
+            num_iafs = 1
+            iaf_dim = self.z_dim
+            iafs = [dist.iaf.InverseAutoregressiveFlow(
+                pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
+                for _ in range(num_iafs)]
+            self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
+            if len(self.iafs) > 0:
+                logging.info("Using inverse autoregressive flows for inference.")
+        else:
+            self.iafs = []
 
         # Determine whether we are working on a GPU.
         if use_cuda:
