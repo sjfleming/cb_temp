@@ -83,7 +83,7 @@ class VariationalInferenceModel(nn.Module):
         # Inverse autoregressive flow
         num_iafs = 1
         iaf_dim = self.z_dim
-        iafs = [dist.iaf.InverseAutoregressiveFlowStable(
+        iafs = [dist.iaf.InverseAutoregressiveFlow(
             pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
             for _ in range(num_iafs)]
         self.iafs = iafs  # pyro's recommended 'nn.ModuleList(iafs)' is wrong
