@@ -81,8 +81,8 @@ class VariationalInferenceModel(nn.Module):
                      'test': {'epoch': [], 'elbo': []}}
 
         # Inverse autoregressive flow
-        num_iafs = 2
-        iaf_dim = self.z_dim * 2
+        num_iafs = 1
+        iaf_dim = self.z_dim
         iafs = [dist.iaf.InverseAutoregressiveFlowStable(
             pyro.nn.AutoRegressiveNN(self.z_dim, [iaf_dim]))
             for _ in range(num_iafs)]
