@@ -609,6 +609,8 @@ def get_matrix_from_h5(filename: str) -> Dict[str,
     returns a dictionary that includes the count matrix, the gene names (which
     correspond to columns of the count matrix), and the barcodes (which
     correspond to rows of the count matrix).
+    
+    This function works for CellRanger v2 and v3 HDF5 formats.
 
     Args:
         filename: string path to .h5 file that contains the raw gene
@@ -634,13 +636,13 @@ def get_matrix_from_h5(filename: str) -> Dict[str,
         csc_list = []
         barcodes = None
 
-        # Each group in the table (other than root) contains a genome,
-        # so walk through the groups to get data for each genome.
+        # For CellRanger v2, each group in the table (other than root) 
+        # contains a genome, so walk through the groups to get data for each genome.
+        # For v3, there is only the 'matrix' group
         for group in f.walk_groups():
             try:
                 # Read in data for this genome, and put it into a
                 # scipy.sparse.csc.csc_matrix
-                gene_names.extend(getattr(group, 'gene_names').read())
                 barcodes = getattr(group, 'barcodes').read()
                 data = getattr(group, 'data').read()
                 indices = getattr(group, 'indices').read()
@@ -648,11 +650,39 @@ def get_matrix_from_h5(filename: str) -> Dict[str,
                 shape = getattr(group, 'shape').read()
                 csc_list.append(sp.csc_matrix((data, indices, indptr),
                                               shape=shape))
+                
+                # Code for v2
+                try:
+                    gene_names.extend(getattr(group, 'gene_names').read())
+                    
+                except tables.NoSuchNodeError: 
+                    # This exists in case the file is CellRanger v3
+                    pass
+                
+                # Code for v3
+                try:
+                    # Read in 'feature' information
+                    feature_group = f.get_node(group, 'features')
+                    feature_types = getattr(feature_group, 'feature_type').read()
+                    feature_names = getattr(feature_group, 'name').read()
+                    
+                    # The only 'feature' we want is 'Gene Expression'
+                    is_gene_expression = (feature_types == b'Gene Expression')
+                    gene_names.extend(feature_names[is_gene_expression])
+                    
+                    # Excise other 'features' from the count matrix
+                    gene_feature_inds = np.where(is_gene_expression)[0]
+                    csc_list[-1] = csc_list[-1][gene_feature_inds, :]
+                    
+                except tables.NoSuchNodeError: 
+                    # This exists in case the file is CellRanger v2
+                    pass
+                
             except tables.NoSuchNodeError:
                 # This exists to bypass the root node, which has no data.
                 pass
 
-    # Put the data from all genomes together.
+    # Put the data from all genomes together (for v2 datasets).
     count_matrix = sp.vstack(csc_list, format='csc')
     count_matrix = count_matrix.transpose().tocsr()
 
